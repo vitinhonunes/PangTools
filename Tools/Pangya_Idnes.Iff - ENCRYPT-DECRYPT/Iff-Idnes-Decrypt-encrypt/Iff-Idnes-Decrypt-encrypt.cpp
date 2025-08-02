@@ -2,55 +2,74 @@
 //
 
 #include "stdafx.h"
-#include "Iff-Idnes-Decrypt-encrypt.h"    
+#include "Iff-Decrypt-encrypt.h"
+#include <vector>
 
-int main(int argc, char* argv[])
-{
-	int result;
-	string sFileName = "pangya_idnes.iff";
+// Function to process a single file
+void processFile(const std::string& fileName, uint* key, const char* keyName) {
+    printf("\n-----------------------------------------------\n");
+    printf("Processing file: %s\n", fileName.c_str());
 
-	printf("-----------------------------------------------\n");
-	printf("|      Pangya Iff Indonesia Encrypt/Decrypt   |\n");
-	printf("|                   Version 1.0               |\n");
-	printf("-----------------------------------------------\n");
-	printf("Created by DaveDevil's - Special thanks to HSReina\n");
-	printf("-----------------------------------------------\n");
-	if (argc == 1)
-	{
-		printf("No input file, Try in same folder ...\n");
+    int result = FileCryptDecrypt(fileName, key);
 
-	}
-	else
-	{
-
-		sFileName = argv[1];
-	}
-
-
-		result = FileCryptDecrypt(sFileName, keyIdnesiff);
-		if (result == -1)
-		{
-			printf("The file has been encrypted !\n");
-		}
-		else if (result == 0)
-		{
-			printf("The file has been Decrypted !\n");
-		}
-		else if (result == 1)
-		{
-			printf("Try other Key ...\n");
-			
-		}
-		else if (result == 2)
-		{
-			printf("Sorry i don't know how encrypt this file !\n");
-		}
-
-
-	printf("\n");
-	system("pause");
-	return 1;
+    if (result == -1) {
+        printf("SUCCESS: The file has been encrypted!\n");
+    } else if (result == 0) {
+        printf("SUCCESS: The file has been decrypted!\n");
+    } else if (result == 1) {
+        printf("FAILED: Decryption failed. The key for '%s' is not correct for this file.\n", keyName);
+    } else if (result == 2) {
+        printf("FAILED: Sorry, I don't know how to encrypt this file!\n");
+    } else if (result == 3) {
+        // This case is handled by the check before calling, but included for completeness
+        printf("INFO: File not found.\n");
+    }
 }
+
+int main(int argc, char* argv[]) {
+    printf("-----------------------------------------------\n");
+    printf("|      Pangya Iff Season 2 Encrypt/Decrypt    |\n");
+    printf("|                   Version 2.0               |\n");
+    printf("|      (Now processes all supported files)    |\n");
+    printf("-----------------------------------------------\n");
+    printf("Created by DaveDevil's - Special thanks to HSReina\n");
+    printf("Edit: Vitinho\n");
+
+    // A list of supported files and their corresponding keys
+    std::vector<std::pair<std::string, uint*>> supportedFiles;
+    supportedFiles.push_back(std::make_pair("pangya_idnes.iff", keyIdnesiff));
+    supportedFiles.push_back(std::make_pair("pangya_brs.iff", keyBriff));
+    supportedFiles.push_back(std::make_pair("pangya_sg.iff", keySeaiff));
+
+    int filesProcessed = 0;
+
+    // Iterate through the list of supported files
+    for (const auto& file_pair : supportedFiles) {
+        const std::string& fileName = file_pair.first;
+        uint* key = file_pair.second;
+
+        // Check if the file exists in the current directory
+        ifstream f(fileName.c_str());
+        if (f.good()) {
+            f.close();
+            processFile(fileName, key, fileName.c_str());
+            filesProcessed++;
+        } else {
+            f.close();
+        }
+    }
+
+    if (filesProcessed == 0) {
+        printf("\nNo supported files found in the application's folder.\n");
+        printf("Please place pangya_idnes.iff, pangya_brs.iff, or pangya_sg.iff here.\n");
+    }
+
+    printf("\n-----------------------------------------------\n");
+    printf("Processing complete. Press any key to exit.\n");
+    system("pause");
+    return 1;
+}
+
 
 int FileCryptDecrypt(string filename, uint key[4])
 {
@@ -63,6 +82,7 @@ int FileCryptDecrypt(string filename, uint key[4])
 
 	if (size < 0)
 	{
+		// This check is now redundant because we check for file existence before calling
 		printf("File not found : %s \n", filename.c_str());
 		fOriginalFile.close();
 		return 3;
@@ -76,12 +96,15 @@ int FileCryptDecrypt(string filename, uint key[4])
 	fOriginalFile.read(Data, size);
 
 	// If data is decrypted -> check what crypt i need
-	if (Data[0] == 'P' && Data[1] == 'K')
-	{
-		printf("Trying to Encrypt ... \n");
-		encrypt = true;
-		key = keyIdnesiff;
-	}
+    if (Data[0] == 'P' && Data[1] == 'K')
+    {
+        printf("Input file is a ZIP archive. Trying to Encrypt...\n");
+        encrypt = true;
+    }
+    else
+    {
+        printf("Input file is encrypted. Trying to Decrypt...\n");
+    }
 
 	for (int i = 0; i < size; i = i + 8)
 	{
@@ -104,29 +127,32 @@ int FileCryptDecrypt(string filename, uint key[4])
 		//If Decrypt fail ...
 		if (i == 0 && DataFinal[0] != 'P' && DataFinal[1] != 'K' && encrypt == false)
 		{
-
-			printf("Not pangya_idnes.iff... \n");
-
 			fOriginalFile.close();
-			return 1;
+            delete[] Data;
+            delete[] DataFinal;
+			return 1; // Return 1 for failed decryption
 		}
 	}
 
 
 	if (encrypt)
 	{
-		std::fstream SaveFile;
-		string savefilename = filename + ".iff";
-		SaveFile.open(savefilename.c_str(), std::fstream::in | std::fstream::out | fstream::binary | std::fstream::app);
+        // To avoid creating "pangya_sg.iff.iff", we remove the original extension.
+        string base_filename = filename.substr(0, filename.find_last_of('.'));
+		string savefilename = base_filename + "_encrypted.iff";
+        printf("Saving encrypted file to: %s\n", savefilename.c_str());
+		std::fstream SaveFile(savefilename.c_str(), std::ios::out | std::ios::binary);
 		SaveFile.write(DataFinal, size);
 		SaveFile.close();
 		ret = -1;
 	}
 	else
 	{
-		std::fstream SaveFile;
-		string savefilename = filename + ".zip";
-		SaveFile.open(savefilename.c_str(), std::fstream::in | std::fstream::out | fstream::binary | std::fstream::app);
+        // To avoid creating "pangya_sg.iff.zip", we remove the original extension.
+        string base_filename = filename.substr(0, filename.find_last_of('.'));
+		string savefilename = base_filename + "_decrypted.zip";
+        printf("Saving decrypted file to: %s\n", savefilename.c_str());
+		std::fstream SaveFile(savefilename.c_str(), std::ios::out | std::ios::binary);
 		SaveFile.write(DataFinal, size);
 		SaveFile.close();
 		ret = 0;
@@ -134,6 +160,8 @@ int FileCryptDecrypt(string filename, uint key[4])
 
 
 	fOriginalFile.close();
+    delete[] Data;
+    delete[] DataFinal;
 	return ret;
 }
 
@@ -168,4 +196,3 @@ void xtea_decipher(unsigned int num_rounds, uint data[2], uint key[4])
 	data[0] = data0;
 	data[1] = data1;
 }
-
