@@ -3,8 +3,14 @@
 #define __UPDATELIST_H
 
 //List Of Key
+//Indonesia - pangya_idnes.iff
 uint keyIdnesiff[4] = { 23334327, 21322395, 41884343, 93424468 };
 
+//Brasil - pangya_brs.iff
+uint keyBriff[4] = { 23446127, 21575395, 41885623, 94986268 };
+
+//SEA - pangya_sg.iff
+uint keySeaiff[4] = { 23444327, 21522395, 41885643, 94424468 };
 
 //List of Func
 void xtea_encipher(unsigned int num_rounds, uint data[2], uint key[4]);
